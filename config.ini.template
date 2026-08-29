@@ -1,0 +1,263 @@
+# BidClub Daily Podcast Digest -- configuration template.
+#
+# Copy this file to config.ini in the same directory and fill in your values:
+#     cp config.ini.template config.ini
+#
+# COMMENTS: keep them on their own line, starting with # or ;. Inline comments
+# use ';' only, on purpose -- so a '#' inside a URL or inside a header/footer
+# template is never silently truncated.
+# Any value left at its YOUR_* placeholder counts as "not configured".
+
+
+[bidclub]
+# Base URL of the public BidClub API. No trailing slash.
+# API documentation: https://bidclub.ai/api-docs
+api_base = https://bidclub.ai
+
+# HTTP request timeout in seconds, applied to every single request.
+request_timeout = 30
+
+# Maximum attempts per HTTP request before giving up (1 = no retry at all).
+max_retries = 3
+
+# Seconds to wait after the first failed attempt. Doubles on every further
+# retry, so max_retries = 3 with retry_backoff = 2 waits 2s, then 4s.
+retry_backoff = 2
+
+# Rows per page of /api/v1/episodes. The server accepts 1-100 only and answers
+# HTTP 400 for anything else. At roughly 5 episodes a day, one 100-row page
+# already covers about 18 days of history.
+page_size = 100
+
+# Hard ceiling on how many pages the day-window scan may pull. The scan normally
+# stops after page 1; this only bounds a pathological run.
+max_pages = 3
+
+# Append a cache-busting query parameter (_cb=<epoch>) to every API request.
+# A once-a-day caller is exactly the request a CDN answers from a stale edge
+# copy. Unknown query parameters are ignored by the API, so this is safe.
+cache_buster = true
+
+
+[window]
+# Timezone that defines "yesterday". The digest always reports on the previous
+# calendar day in THIS timezone, whatever the server's own clock is set to.
+timezone = Asia/Shanghai
+
+# Which field decides the day an episode belongs to:
+#   published_at  RECOMMENDED. The real publication instant, converted to the
+#                 timezone above. It is the only field the API orders by.
+#   date          The show-declared episode date. It disagrees with the local
+#                 date of published_at for roughly a third of episodes. Pick it
+#                 only if you want "the date the podcast itself claims".
+date_basis = published_at
+
+# How many calendar days back from the target day (inclusive) to scan.
+#   1 = strictly yesterday.
+#   3 = RECOMMENDED. Episodes published late in the day keep landing in the API
+#       well into the next day, so a single 08:00 pass over yesterday alone can
+#       drop late arrivals. The sent-ledger (see [state]) means a wider window
+#       never double-posts -- it only ever catches up.
+lookback_days = 3
+
+# Behaviour on the very first run, when no state file exists yet:
+#   false = RECOMMENDED. Push only the target day and quietly record the older
+#           episodes in the window as already delivered, so the first run does
+#           not flood the chat with a week of history.
+#   true  = push every episode in the whole lookback window.
+notify_on_first_run = false
+
+
+[content]
+# Which summary to push for each episode:
+#   tldr    RECOMMENDED. The TL;DR bullet list (~1.4k CJK / ~3.5k ASCII chars).
+#   digest  The full sectioned digest. Much longer; expect many more messages.
+#   dek     The one-paragraph blurb only. Very compact.
+summary_field = tldr
+
+# Rendering language:
+#   zh       RECOMMENDED. Always Chinese: uses the *_alt fields when the episode
+#            is English-primary, the primary fields when it is Chinese-primary.
+#   en       Always English, mirrored logic.
+#   primary  Whatever language the episode was produced in.
+#   both     Primary first, then the translation. Roughly doubles the volume.
+language = zh
+
+# Maximum episodes rendered in full in one run. Any extra episodes are listed by
+# title and link in a compact tail, and still count as delivered.
+max_episodes = 12
+
+# Per-episode ceiling on the summary body, in characters, applied before
+# splitting. 0 disables truncation.
+max_summary_chars = 4000
+
+# Include the one-paragraph blurb (dek) above the summary bullets. It is shown
+# automatically whenever the summary itself is unavailable.
+include_dek = false
+
+# Include a link to the BidClub episode page (https://bidclub.ai/e/<slug>).
+include_episode_link = true
+
+# Include a link to the original audio/video page (source_url).
+include_source_link = true
+
+# Show the podcast show name in the episode header line.
+include_show = true
+
+# Show the episode duration in minutes in the episode header line.
+include_duration = true
+
+# Episode order inside the digest: published_asc (oldest first) or
+# published_desc (newest first).
+sort = published_asc
+
+
+[telegram]
+# Set to false to disable the Telegram channel entirely.
+enabled = true
+
+# Telegram bot token from @BotFather.
+# Leave the placeholder or empty to disable this channel.
+bot_token = YOUR_TELEGRAM_BOT_TOKEN
+
+# Target chat id(s): a user id, a group/supergroup id (usually negative, e.g.
+# -1001234567890) or a public channel username such as @my_channel.
+# IMPORTANT: the bot can only deliver to a chat it BELONGS to.
+# List several targets separated by commas; each is tracked independently, so
+# every chat receives each episode exactly once.
+# Verify access after editing:  python3 bidclub_digest.py --check
+chat_id = YOUR_TELEGRAM_CHAT_ID
+
+# Message formatting: html (recommended) or plain.
+# HTML needs only three escaped characters and one uniform rule. If Telegram
+# ever rejects a chunk with "can't parse entities", that chunk is automatically
+# resent as plain text rather than lost.
+parse_mode = html
+
+# Send every chunk silently (delivered without a sound). Recommended for an
+# unattended 08:00 job. When false, only the first chunk makes a sound.
+disable_notification = true
+
+# Optional forum topic id (message_thread_id). Leave empty for normal chats.
+message_thread_id =
+
+
+[lark]
+# Set to false to disable the Lark / Feishu channel entirely.
+enabled = true
+
+# Full custom-bot webhook URL.
+# International (Lark): https://open.larksuite.com/open-apis/bot/v2/hook/xxxxxxxx
+# China (Feishu):       https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxx
+webhook_url = YOUR_LARK_WEBHOOK_URL
+
+# Signing secret, only when the bot has "signature verification" (签名校验)
+# enabled in the group's bot settings. Leave empty when that mode is off.
+secret =
+
+# Message type:
+#   interactive  RECOMMENDED. A card whose markdown body renders bold, bullets,
+#                links and dividers, with the digest title in the card header.
+#   post         Rich text. Structure survives, most formatting does not.
+#   text         Plain text. Links render as bare URLs. Last resort.
+# On a permanent content error the sender degrades interactive -> post -> text
+# by itself and logs which type finally worked.
+msg_type = interactive
+
+# Card header colour: blue, wathet, turquoise, green, yellow, orange, red,
+# carmine, violet, purple, indigo, grey.
+card_template = blue
+
+# Locale key for the post/card language block: zh_cn or en_us.
+lang = zh_cn
+
+
+[output]
+# --- Telegram chunking ---
+# Chunk budget in characters. Telegram's hard limit is 4096 characters after
+# entity parsing; 3500 leaves room for the per-chunk header and any server-side
+# counting difference. Never raise this above 3900.
+telegram_chunk_chars = 3500
+
+# Refuse to send more than this many Telegram messages in one run. Anything
+# beyond it is replaced by a compact "+N more episodes" tail.
+telegram_max_chunks = 20
+
+# Seconds to sleep BETWEEN Telegram messages (never after the last one).
+# Telegram allows about 1 message per second per chat but only 20 messages per
+# minute into a group, i.e. one every 3 seconds. 3.2 is safe for both.
+telegram_delay_seconds = 3.2
+
+# --- Lark chunking ---
+# Chunk budget for the message body, in UTF-8 BYTES -- Lark caps the whole
+# serialized request body, not the character count. One Chinese character is
+# 3 bytes. The hard gateway limit is 20480 bytes; 8000 bytes of content leaves
+# ample room for the JSON scaffolding.
+lark_chunk_bytes = 8000
+
+# Refuse to send more than this many Lark messages in one run.
+lark_max_chunks = 20
+
+# Seconds to sleep BETWEEN Lark messages. A custom bot is limited to 100
+# messages per minute and 5 per second, shared with every other alert it sends.
+lark_delay_seconds = 1.0
+
+# --- Shared ---
+# Sleep a random 0..N seconds before the FIRST send. Lark's own documentation
+# warns that messages landing exactly on the hour or half hour draw throttling
+# errors, and this job fires at exactly 08:00. Set 0 to disable.
+startup_jitter_seconds = 180
+
+# Per-chunk header. Placeholders: {title} {date} {index} {total} {count}
+# {index} is 1-based, {total} is the chunk count, {count} is the episode count.
+header_template = {title} · {date} ({index}/{total})
+
+# Digest title, used by {title} and as the Lark card header. If your Lark bot
+# has a required keyword, put that keyword in here -- only text and title
+# fields are scanned for it.
+title = BidClub Daily Podcast
+
+# Footer appended to the LAST chunk only. Empty disables it.
+# Placeholders: {count} {date} {source}
+footer_template = — {count} episodes · https://bidclub.ai
+
+# Push a short notice when the target day has no episodes at all.
+# false = log it and exit cleanly without sending anything.
+notify_empty = false
+
+# Text used when notify_empty = true. Placeholder: {date}
+empty_message = No BidClub episodes published on {date}.
+
+# Date format used by {date}, strftime syntax.
+date_format = %Y-%m-%d
+
+
+[state]
+# Ledger of already-delivered episodes, relative to this directory. It is what
+# guarantees that a second run on the same day -- a manual re-run, a cron
+# retry, or a wider lookback window -- never double-posts.
+state_file = sent_episodes.json
+
+# Drop ledger entries older than this many days.
+state_retention_days = 90
+
+# Cross-process lock file preventing two overlapping runs.
+lock_file = bidclub_digest.lock
+
+
+[logging]
+# DEBUG, INFO, WARNING or ERROR.
+level = INFO
+
+# Log file relative to this directory. Empty = console only.
+file = bidclub_digest.log
+
+# Rotate the log at this size in bytes, keeping backup_count old files.
+max_bytes = 5242880
+backup_count = 3
+
+# Also echo log lines to the console. crontab.sh redirects its own output to a
+# SEPARATE file (bidclub_digest_cron.log), so leaving this true costs one extra
+# copy of each line there and keeps interactive runs readable. Set it to false
+# if you want the rotating log above to be the only copy.
+console = true

@@ -1,0 +1,19 @@
+# Python bytecode caches
+__pycache__/
+*.py[cod]
+
+# Live configuration (Telegram bot token, Lark webhook + signing secret)
+config.ini
+
+# Runtime state: delivery ledger, its atomic-write staging file, quarantined
+# copies of an unreadable ledger, and the single-instance lock.
+sent_episodes.json
+sent_episodes.json.tmp
+sent_episodes.json.corrupt-*
+bidclub_digest.lock
+
+# Logs: the rotating log the service writes, plus the crash log crontab.sh
+# captures for failures that happen before logging is configured.
+bidclub_digest.log
+bidclub_digest.log.*
+bidclub_digest_cron.log
